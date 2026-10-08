@@ -58,7 +58,7 @@ WS csomag → ring buffer (PSRAM, ha van) → dekóder task → I2S DMA. A hál�
 ## Hibakezelés
 
 - Kapcsolatvesztés: exponenciális újrapróbálkozás.
-- Elutasított kézfogás (HTTP 403): a kliens-könyvtár nem adja ki a státuszt, ezért ez nem különböztethető meg a hálózati hibától. Mindkettőre visszalépés (plafon 30 s) és egyértelmű naplóüzenet ismételt hibánál.
+- Elutasított kézfogás (HTTP 403): a kliens-könyvtár a kézfogás-hiba okát (benne a "HTTP 403" szöveget) a DISCONNECTED esemény payloadjában adja ki; ezt naplózzuk, 403-nál külön magyarázó sorral. A 403 és a hálózati hibák ugyanazt a visszalépést kapják (1/2/5/10/30 s, plafon 30 s), ismételt hibánál egyértelmű naplóüzenet.
 - Puffer kiürülése: a kimenet némítása, hogy ne ropogjon.
 - Hibás config: alapértékekkel indul, figyelmeztet.
 - Remote IP eltérés az allowlisttől: a kapcsolat megszakad.
@@ -72,7 +72,7 @@ WS csomag → ring buffer (PSRAM, ha van) → dekóder task → I2S DMA. A hál�
 
 - Cím: `ws://<szerver-ip>:8766/api/mixer/stream`, sima WebSocket (nincs TLS), fejléc: `Authorization: Bearer <token>`. Más útvonal nincs, az alapértelmezett port 8766.
 - Az ESP32 csak hallgat, semmit nem küld a szervernek.
-- A szerver csak a regisztrált IP-ről és érvényes tokennel enged be. Elutasításkor a kézfogás HTTP 403-mal bukik (az ok nem látszik a kliensnek). Ezért az ESP32 statikus IP-jének egyeznie kell az admin felületen felvett IP-vel.
+- A szerver csak a regisztrált IP-ről és érvényes tokennel enged be. Elutasításkor a kézfogás HTTP 403-mal bukik (a kliens-könyvtár az okot a szétkapcsolás eseményében adja ki, ezt naplózzuk). Ezért az ESP32 statikus IP-jének egyeznie kell az admin felületen felvett IP-vel.
 - A szerver 1008 kóddal zárhatja a kapcsolatot (letiltás, törlés, token rotáció, lejárat).
 - Első üzenet: `STREAM_INFO` JSON (`codec`, `sample_rate`, `channels`, `bitrate_kbps`, `frame_samples`); jelenleg mono, 44,1 kHz, 128 kbit/s MP3.
 - Utána bináris csomagok, big-endian, 15 bájtos fejléccel + MP3 payload:

@@ -1,5 +1,6 @@
 #include "StreamClient.h"
 
+#include <string.h>
 #include <WiFi.h>
 
 #include "../model/Ipv4.h"
@@ -85,8 +86,24 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
       uint32_t backoff = nextBackoffMs();
       ws_.setReconnectInterval(backoff);
       flush_ = true;  // leáll a lejátszás, törlődik a puffer
-      Serial.printf("[ws] disconnected (attempt %u), retry in %u ms\n", (unsigned)failures_,
-                    (unsigned)backoff);
+      // A könyvtár a kézfogás-hiba okát a payloadban adja (pl. "WebSocket handshake failed - HTTP 403").
+      char reason[96] = "";
+      if (payload != nullptr && length > 0) {
+        size_t n = length < sizeof(reason) - 1 ? length : sizeof(reason) - 1;
+        memcpy(reason, payload, n);
+        reason[n] = '\0';
+      }
+      if (reason[0] != '\0') {
+        Serial.printf("[ws] disconnected (attempt %u, reason: %s), retry in %u ms\n",
+                      (unsigned)failures_, reason, (unsigned)backoff);
+        if (strstr(reason, "HTTP 403") != nullptr)
+          Serial.println(
+              "[ws] server rejected the handshake (HTTP 403): the token or the registered IP of "
+              "this device is invalid, expired, or the device is disabled");
+      } else {
+        Serial.printf("[ws] disconnected (attempt %u), retry in %u ms\n", (unsigned)failures_,
+                      (unsigned)backoff);
+      }
       if (failures_ >= 5)
         Serial.println("[ws] repeated failures: check endpoint, static IP, network and token");
       break;

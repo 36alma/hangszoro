@@ -20,6 +20,9 @@ Decoder decoder;
 RingBuffer* ring = nullptr;
 StreamClient* client = nullptr;
 bool clientStarted = false;
+uint32_t beginFailures = 0;
+uint32_t nextBeginAtMs = 0;
+bool linkWasUp = true;
 
 void loadConfig() {
   cfg = defaultConfig();
@@ -107,8 +110,22 @@ void setup() {
 void loop() {
   net.maintain(cfg);
   if (net.connected()) {
-    if (!clientStarted) clientStarted = client->begin();
+    linkWasUp = true;
+    if (!clientStarted && (int32_t)(millis() - nextBeginAtMs) >= 0) {
+      clientStarted = client->begin();
+      if (clientStarted) {
+        beginFailures = 0;
+      } else {
+        beginFailures++;
+        nextBeginAtMs = millis() + StreamClient::backoffMs(beginFailures);
+        if (beginFailures == 5)
+          Serial.println("[ws] repeated start failures: check host, DNS and firewall settings");
+      }
+    }
     if (clientStarted) client->loop();
+  } else if (linkWasUp) {
+    linkWasUp = false;  // kimaradási él: egyszer kérünk ürítést
+    if (clientStarted) client->onLinkDown();
   }
   delay(1);
 }

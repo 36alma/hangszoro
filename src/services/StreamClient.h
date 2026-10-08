@@ -29,6 +29,12 @@ class StreamClient {
   bool takeFlushRequest() { return flush_.exchange(false); }
   uint32_t bitrateKbps() const { return bitrateKbps_.load(); }
 
+  // A WiFi-kapcsolat elveszett: ürítést kér (a loop() nem hívja a ws-t, amíg nincs hálózat).
+  void onLinkDown() { flush_ = true; }
+
+  // Várakozás (ms) az attempt-edik egymás utáni hiba után: 1, 2, 5, 10, majd 30 s.
+  static uint32_t backoffMs(uint32_t attempt);
+
  private:
   void onEvent(WStype_t type, uint8_t* payload, size_t length);
   void onBinary(const uint8_t* data, size_t length);
@@ -47,4 +53,6 @@ class StreamClient {
   uint32_t malformed_ = 0;
   uint32_t lost_ = 0;
   uint8_t lastStatus_ = 0xFF;
+  uint32_t lastRxMs_ = 0;
+  static constexpr uint32_t kRxTimeoutMs = 5000;
 };

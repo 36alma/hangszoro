@@ -15,11 +15,13 @@ constexpr uint32_t kBackoffMs[] = {1000, 2000, 5000, 10000, 30000};
 
 StreamClient::StreamClient(const Config& cfg, RingBuffer& ring) : cfg_(cfg), ring_(ring) {}
 
-uint32_t StreamClient::nextBackoffMs() const {
-  size_t idx = failures_ == 0 ? 0 : failures_ - 1;
+uint32_t StreamClient::backoffMs(uint32_t attempt) {
+  size_t idx = attempt == 0 ? 0 : attempt - 1;
   size_t last = sizeof(kBackoffMs) / sizeof(kBackoffMs[0]) - 1;
   return kBackoffMs[idx < last ? idx : last];
 }
+
+uint32_t StreamClient::nextBackoffMs() const { return backoffMs(failures_); }
 
 bool StreamClient::begin() {
   IPAddress ip;
@@ -50,7 +52,15 @@ bool StreamClient::begin() {
   return true;
 }
 
-void StreamClient::loop() { ws_.loop(); }
+void StreamClient::loop() {
+  ws_.loop();
+  // Vételi figyelő: a szerver folyamatosan küld, így hallgatás = néma kapcsolatvesztés.
+  if (ws_.isConnected() && (uint32_t)(millis() - lastRxMs_) > kRxTimeoutMs) {
+    Serial.println("[ws] no data for 5 s, reconnecting");
+    lastRxMs_ = millis();
+    ws_.disconnect();  // a DISCONNECTED kezelő végzi a várakozást és az ürítést
+  }
+}
 
 void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
   switch (type) {
@@ -62,6 +72,7 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
         return;
       }
       Serial.println("[ws] connected");
+      lastRxMs_ = millis();
       failures_ = 0;
       ws_.setReconnectInterval(kBackoffMs[0]);
       seq_.reset();
@@ -81,6 +92,7 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
       break;
     }
     case WStype_TEXT: {
+      lastRxMs_ = millis();
       StreamInfo si;
       if (parseStreamInfo((const char*)payload, si)) {
         bitrateKbps_ = si.bitrateKbps;
@@ -92,6 +104,7 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
       break;
     }
     case WStype_BIN:
+      lastRxMs_ = millis();
       onBinary(payload, length);
       break;
     default:

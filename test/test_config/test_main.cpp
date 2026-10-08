@@ -4,6 +4,12 @@
 void setUp() {}
 void tearDown() {}
 
+static bool anyContains(const std::vector<std::string>& w, const char* needle) {
+  for (const auto& m : w)
+    if (m.find(needle) != std::string::npos) return true;
+  return false;
+}
+
 void test_defaults() {
   Config c = defaultConfig();
   TEST_ASSERT_EQUAL_UINT32(0xC0A80132u, c.ip);
@@ -96,9 +102,11 @@ void test_invalid_mask_rejects_net_group() {
 
 void test_token_with_crlf_rejected() {
   Config c = defaultConfig();
-  auto w = applyJson(c, "{\"endpoint\":{\"token\":\"abc\r\nX-Evil: 1\"}}");
+  auto w = applyJson(c, "{\"endpoint\":{\"token\":\"abc\\r\\nX-Evil: 1\"}}");
   TEST_ASSERT_FALSE(w.empty());
   TEST_ASSERT_EQUAL_STRING("", c.token.c_str());
+  TEST_ASSERT_TRUE(anyContains(w, "endpoint.token"));
+  TEST_ASSERT_FALSE(anyContains(w, "invalid JSON"));
 }
 
 void test_token_with_space_rejected() {
@@ -160,9 +168,11 @@ void test_prebuffer_must_not_exceed_buffer() {
 
 void test_token_value_never_in_warnings() {
   Config c = defaultConfig();
-  auto w = applyJson(c, "{\"endpoint\":{\"token\":\"SECRET\r\nTOKEN\"}}");
+  auto w = applyJson(c, "{\"endpoint\":{\"token\":\"SECRET\\r\\nTOKEN\"}}");
   TEST_ASSERT_FALSE(w.empty());
   for (const auto& m : w) TEST_ASSERT_TRUE(m.find("SECRET") == std::string::npos);
+  TEST_ASSERT_TRUE(anyContains(w, "endpoint.token"));
+  TEST_ASSERT_FALSE(anyContains(w, "invalid JSON"));
 }
 
 int main() {

@@ -26,4 +26,5 @@ class Decoder {
   Mp3 mp3_;
   PcmSink sink_ = nullptr;
   void* ctx_ = nullptr;
+  bool discard_ = false;  // reset() közben a flush()-olt maradék kereteket eldobjuk
 };

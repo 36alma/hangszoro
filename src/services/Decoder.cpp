@@ -13,7 +13,7 @@ void Decoder::begin(PcmSink sink, void* ctx) {
 
 void Decoder::onPcm(MP3FrameInfo& info, short* pcm, size_t len, void* ref) {
   Decoder* self = static_cast<Decoder*>(ref);
-  if (!self || !self->sink_ || info.nChans < 1 || info.nChans > 2) return;
+  if (!self || self->discard_ || !self->sink_ || info.nChans < 1 || info.nChans > 2) return;
   self->sink_(pcm, len, (uint8_t)info.nChans, (uint32_t)info.samprate, self->ctx_);
 }
 
@@ -31,6 +31,8 @@ void Decoder::feed(const uint8_t* data, size_t len) {
 }
 
 void Decoder::reset() {
+  discard_ = true;  // end() flush()-ol, ne jusson régi PCM a sinkbe
   mp3_.end();
+  discard_ = false;
   mp3_.begin();
 }

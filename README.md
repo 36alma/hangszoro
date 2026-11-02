@@ -42,6 +42,8 @@ Az érvénytelen mezőt a firmware figyelmeztetéssel (`[cfg] config.json: ...`)
 
 | Mező | Jelentés | Alapérték | Érvényes érték |
 |---|---|---|---|
+| `device.name` | Eszköz neve (induláskor kiírja a soros napló) | `Hangszoro` | 1..64 karakter, nincs vezérlőkarakter |
+| `device.hostname` | Hosztnév a hálózaton (DHCP/router) | `hangszoro` | 1..32 betű, szám vagy `-`, nem kezdődhet/végződhet `-`-val |
 | `wifi.ssid` | WiFi neve | `changeme` | 1..32 bájt |
 | `wifi.password` | WiFi jelszó | `changeme` | legfeljebb 63 bájt |
 | `net.ip` | Statikus IP (egyezzen az admin felületen felvettel) | `192.168.1.50` | érvényes IPv4 |
@@ -63,10 +65,12 @@ A szerver címe IP-literál vagy hosztnév lehet. A firmware a hosztnevet indul�
 ## 5. Fordítás és feltöltés
 
 ```
-pio run -t uploadfs      # data/config.json feltöltése (LittleFS)
-pio run -t upload        # firmware feltöltése
-pio device monitor       # soros napló, 115200 baud
+pio run -e rymcu-esp32-s3-devkitc-1 -t uploadfs   # data/config.json feltöltése (LittleFS)
+pio run -e rymcu-esp32-s3-devkitc-1 -t upload     # firmware fordítása és feltöltése
+pio device monitor                                # soros napló, 115200 baud
 ```
+
+Az `-e rymcu-esp32-s3-devkitc-1` kötelező: a `platformio.ini`-ben a `native` tesztkörnyezet is szerepel, és nélküle a `pio run` azt is megpróbálja lefordítani, illetve feltölteni.
 
 Rögzített (pinelt) verziók a `platformio.ini`-ben: `espressif32@7.1.3` (Arduino-ESP32 2.0.17), `ArduinoJson@7.4.3`, `WebSockets@2.7.3`, `arduino-libhelix` `v0.9.4`.
 
@@ -76,7 +80,7 @@ Ha a felhasználói profil vagy a projekt útvonala nem ASCII karaktert tartalma
 
 Megoldás (bármelyik):
 
-- Állítsd be a `PLATFORMIO_BUILD_DIR` környezeti változót egy ASCII mappára abban a shellben, ahol a `pio`-t futtatod, például PowerShellben: `$env:PLATFORMIO_BUILD_DIR='C:/pio_build'; pio run`.
+- Állítsd be a `PLATFORMIO_BUILD_DIR` környezeti változót egy ASCII mappára abban a shellben, ahol a `pio`-t futtatod, például PowerShellben: `$env:PLATFORMIO_BUILD_DIR='C:/pio_build'; pio run -e rymcu-esp32-s3-devkitc-1 -t upload`.
 - Vagy költöztesd a projektet ASCII útvonalra.
 
 Gépspecifikus útvonalat ne írj a `platformio.ini`-be.

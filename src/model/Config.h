@@ -4,6 +4,9 @@
 #include <vector>
 
 struct Config {
+  std::string deviceName;
+  std::string hostname;
+
   std::string wifiSsid;
   std::string wifiPassword;
 

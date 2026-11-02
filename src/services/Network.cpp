@@ -4,6 +4,7 @@
 
 bool Network::connect(const Config& cfg, uint32_t timeoutMs) {
   WiFi.mode(WIFI_STA);
+  WiFi.setHostname(cfg.hostname.c_str());  // a WiFi.config()/begin() előtt kell
   WiFi.setAutoReconnect(true);
   if (!WiFi.config(toIPAddress(cfg.ip), toIPAddress(cfg.gateway), toIPAddress(cfg.mask),
                    toIPAddress(cfg.dns))) {
@@ -21,8 +22,8 @@ bool Network::connect(const Config& cfg, uint32_t timeoutMs) {
     }
     delay(200);
   }
-  Serial.printf("[net] connected, ip=%s gw=%s\n", WiFi.localIP().toString().c_str(),
-                WiFi.gatewayIP().toString().c_str());
+  Serial.printf("[net] connected, hostname=%s ip=%s gw=%s\n", WiFi.getHostname(),
+                WiFi.localIP().toString().c_str(), WiFi.gatewayIP().toString().c_str());
   return true;
 }
 

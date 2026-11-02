@@ -22,6 +22,18 @@ void test_defaults() {
   TEST_ASSERT_EQUAL_INT(15, c.bck);
 }
 
+void test_device_identity() {
+  Config c = defaultConfig();
+  TEST_ASSERT_EQUAL_STRING("Hangszoro", c.deviceName.c_str());
+  TEST_ASSERT_EQUAL_STRING("hangszoro", c.hostname.c_str());
+  TEST_ASSERT_EQUAL(0, applyJson(c, R"({"device":{"name":"Konyha","hostname":"konyha-1"}})").size());
+  TEST_ASSERT_EQUAL_STRING("Konyha", c.deviceName.c_str());
+  TEST_ASSERT_EQUAL_STRING("konyha-1", c.hostname.c_str());
+  TEST_ASSERT_EQUAL(1, applyJson(c, R"({"device":{"hostname":"-rossz"}})").size());
+  TEST_ASSERT_EQUAL(1, applyJson(c, R"({"device":{"hostname":"van szokoz"}})").size());
+  TEST_ASSERT_EQUAL_STRING("konyha-1", c.hostname.c_str());
+}
+
 void test_json_overrides_all() {
   Config c = defaultConfig();
   auto w = applyJson(c, R"({
@@ -178,6 +190,7 @@ void test_token_value_never_in_warnings() {
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_defaults);
+  RUN_TEST(test_device_identity);
   RUN_TEST(test_json_overrides_all);
   RUN_TEST(test_partial_json_keeps_other_defaults);
   RUN_TEST(test_malformed_json_keeps_defaults);

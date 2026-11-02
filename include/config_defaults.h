@@ -1,6 +1,9 @@
 #pragma once
 // Alapértékek. A data/config.json felülírja őket.
 
+#define CFG_DEVICE_NAME "Hangszoro"
+#define CFG_DEVICE_HOSTNAME "hangszoro"
+
 #define CFG_WIFI_SSID "changeme"
 #define CFG_WIFI_PASSWORD "changeme"
 

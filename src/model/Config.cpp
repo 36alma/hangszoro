@@ -2,6 +2,8 @@
 
 #include <ArduinoJson.h>
 
+#include <cctype>
+
 #include "Ipv4.h"
 #include "config_defaults.h"
 
@@ -19,6 +21,14 @@ bool hasControl(const std::string& s) {
 
 bool hasControlOrSpace(const std::string& s) {
   return hasControl(s) || s.find(' ') != std::string::npos;
+}
+
+// RFC 952/1123 hosztnév: 1..32 karakter, betű/szám/kötőjel, nem kezdődik és nem végződik kötőjellel.
+bool isValidHostname(const std::string& s) {
+  if (s.empty() || s.size() > 32 || s.front() == '-' || s.back() == '-') return false;
+  for (unsigned char c : s)
+    if (!isalnum(c) && c != '-') return false;
+  return true;
 }
 
 bool readString(JsonVariantConst v, const char* name, std::string& out, Warnings& w) {
@@ -62,6 +72,8 @@ bool readInt(JsonVariantConst v, const char* name, long lo, long hi, long& out, 
 
 Config defaultConfig() {
   Config c;
+  c.deviceName = CFG_DEVICE_NAME;
+  c.hostname = CFG_DEVICE_HOSTNAME;
   c.wifiSsid = CFG_WIFI_SSID;
   c.wifiPassword = CFG_WIFI_PASSWORD;
   parseIPv4(CFG_NET_IP, c.ip);
@@ -93,6 +105,20 @@ Warnings applyJson(Config& cfg, const char* json) {
     return w;
   }
   const JsonDocument& root = doc;
+
+  // device
+  {
+    JsonVariantConst dev = root["device"];
+    std::string s;
+    if (readString(dev["name"], "device.name", s, w)) {
+      if (s.empty() || s.size() > 64 || hasControl(s)) warn(w, "device.name must be 1..64 characters without control characters");
+      else cfg.deviceName = s;
+    }
+    if (readString(dev["hostname"], "device.hostname", s, w)) {
+      if (!isValidHostname(s)) warn(w, "device.hostname must be 1..32 letters, digits or '-', not starting or ending with '-'");
+      else cfg.hostname = s;
+    }
+  }
 
   // wifi
   {

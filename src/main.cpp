@@ -94,6 +94,8 @@ void setup() {
   Serial.println("[boot] hangszoro");
 
   loadConfig();
+  Serial.printf("[boot] device name: %s, hostname: %s\n", cfg.deviceName.c_str(),
+                cfg.hostname.c_str());
 
   if (!audio.begin(cfg.bck, cfg.lrck, cfg.din, kInitialSampleRate)) {
     Serial.println("[boot] audio init failed");

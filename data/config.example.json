@@ -1,17 +1,31 @@
 {
-  "wifi": { "ssid": "IDE_A_WIFI_NEVE", "password": "IDE_A_JELSZO" },
+  "device": {
+    "name": "Hangszoro",
+    "hostname": "hangszoro"
+  },
+  "wifi": {
+    "ssid": "IDE_A_WIFI_NEVE",
+    "password": "IDE_A_JELSZO"
+  },
   "net": {
-    "ip": "192.168.1.50",
+    "ip": "172.16.1.1",
     "mask": "255.255.255.0",
-    "gateway": "192.168.1.1",
-    "dns": "192.168.1.1"
+    "gateway": "172.16.255.254",
+    "dns": "1.1.1.1"
   },
   "endpoint": {
-    "host": "192.168.1.10",
+    "host": "172.16.1.10",
     "port": 8766,
     "path": "/api/mixer/stream",
     "token": "IDE_A_TOKEN_AZ_ADMIN_FELULETROL"
   },
-  "i2s": { "bck": 15, "lrck": 16, "din": 17 },
-  "buffer": { "ms": 500, "prebuffer_ms": 150 }
+  "i2s": {
+    "bck": 15,
+    "lrck": 16,
+    "din": 17
+  },
+  "buffer": {
+    "ms": 500,
+    "prebuffer_ms": 150
+  }
 }

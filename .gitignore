@@ -5,4 +5,5 @@
 .vscode/ipch
 
 .superpowers/
-data/config.json
+config.json
+default-config.json

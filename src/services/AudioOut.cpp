@@ -2,6 +2,8 @@
 
 #include <driver/i2s.h>
 
+#include "../Log.h"
+
 namespace {
 constexpr i2s_port_t kPort = I2S_NUM_0;
 }
@@ -20,7 +22,7 @@ bool AudioOut::begin(int bck, int lrck, int din, uint32_t sampleRate) {
   cfg.tx_desc_auto_clear = true;
 
   if (i2s_driver_install(kPort, &cfg, 0, nullptr) != ESP_OK) {
-    Serial.println("[i2s] driver install failed");
+    LOGLN("[i2s] driver install failed");
     return false;
   }
   i2s_pin_config_t pins = {};
@@ -30,20 +32,20 @@ bool AudioOut::begin(int bck, int lrck, int din, uint32_t sampleRate) {
   pins.data_out_num = din;
   pins.data_in_num = I2S_PIN_NO_CHANGE;
   if (i2s_set_pin(kPort, &pins) != ESP_OK) {
-    Serial.println("[i2s] set pin failed");
+    LOGLN("[i2s] set pin failed");
     i2s_driver_uninstall(kPort);
     return false;
   }
   sampleRate_ = sampleRate;
   started_ = true;
-  Serial.printf("[i2s] started, %u Hz, bck=%d lrck=%d din=%d\n", (unsigned)sampleRate, bck, lrck, din);
+  LOGF("[i2s] started, %u Hz, bck=%d lrck=%d din=%d\n", (unsigned)sampleRate, bck, lrck, din);
   return true;
 }
 
 void AudioOut::setSampleRate(uint32_t sampleRate) {
   if (!started_ || sampleRate == sampleRate_) return;
   if (i2s_set_sample_rates(kPort, sampleRate) == ESP_OK) {
-    Serial.printf("[i2s] sample rate %u -> %u Hz\n", (unsigned)sampleRate_, (unsigned)sampleRate);
+    LOGF("[i2s] sample rate %u -> %u Hz\n", (unsigned)sampleRate_, (unsigned)sampleRate);
     sampleRate_ = sampleRate;
   }
 }

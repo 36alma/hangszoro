@@ -5,6 +5,7 @@
 
 #include "../model/Ipv4.h"
 #include "Network.h"
+#include "../Log.h"
 
 namespace {
 uint32_t toHostOrder(const IPAddress& ip) {
@@ -30,14 +31,14 @@ bool StreamClient::begin() {
   if (parseIPv4(cfg_.host.c_str(), literal)) {
     ip = toIPAddress(literal);
   } else if (!WiFi.hostByName(cfg_.host.c_str(), ip)) {
-    Serial.printf("[ws] cannot resolve host '%s'\n", cfg_.host.c_str());
+    LOGF("[ws] cannot resolve host '%s'\n", cfg_.host.c_str());
     return false;
   }
 
   uint32_t ipv = toHostOrder(ip);
   firewall_ = Firewall(ipv, cfg_.port);
   if (!firewall_.allowConnect(ipv, cfg_.port)) {
-    Serial.println("[fw] endpoint blocked by firewall");
+    LOGLN("[fw] endpoint blocked by firewall");
     return false;
   }
 
@@ -49,7 +50,7 @@ bool StreamClient::begin() {
   ws_.setReconnectInterval(kBackoffMs[0]);
   // IP-literállal csatlakozunk, így a kapcsolat biztosan az allowlistelt címre megy.
   ws_.begin(ip.toString().c_str(), cfg_.port, cfg_.path.c_str());
-  Serial.printf("[ws] connecting to %s:%u%s\n", ip.toString().c_str(), cfg_.port, cfg_.path.c_str());
+  LOGF("[ws] connecting to %s:%u%s\n", ip.toString().c_str(), cfg_.port, cfg_.path.c_str());
   return true;
 }
 
@@ -57,7 +58,7 @@ void StreamClient::loop() {
   ws_.loop();
   // Vételi figyelő: a szerver folyamatosan küld, így hallgatás = néma kapcsolatvesztés.
   if (ws_.isConnected() && (uint32_t)(millis() - lastRxMs_) > kRxTimeoutMs) {
-    Serial.println("[ws] no data for 5 s, reconnecting");
+    LOGLN("[ws] no data for 5 s, reconnecting");
     lastRxMs_ = millis();
     ws_.disconnect();  // a DISCONNECTED kezelő végzi a várakozást és az ürítést
   }
@@ -68,11 +69,11 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
     case WStype_CONNECTED: {
       uint32_t remote = toHostOrder(ws_.remoteIp());
       if (!firewall_.verifyRemote(remote)) {
-        Serial.println("[fw] remote IP does not match the allowlist, disconnecting");
+        LOGLN("[fw] remote IP does not match the allowlist, disconnecting");
         ws_.disconnect();
         return;
       }
-      Serial.println("[ws] connected");
+      LOGLN("[ws] connected");
       lastRxMs_ = millis();
       failures_ = 0;
       ws_.setReconnectInterval(kBackoffMs[0]);
@@ -94,18 +95,18 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
         reason[n] = '\0';
       }
       if (reason[0] != '\0') {
-        Serial.printf("[ws] disconnected (attempt %u, reason: %s), retry in %u ms\n",
+        LOGF("[ws] disconnected (attempt %u, reason: %s), retry in %u ms\n",
                       (unsigned)failures_, reason, (unsigned)backoff);
         if (strstr(reason, "HTTP 403") != nullptr)
-          Serial.println(
+          LOGLN(
               "[ws] server rejected the handshake (HTTP 403): the token or the registered IP of "
               "this device is invalid, expired, or the device is disabled");
       } else {
-        Serial.printf("[ws] disconnected (attempt %u), retry in %u ms\n", (unsigned)failures_,
+        LOGF("[ws] disconnected (attempt %u), retry in %u ms\n", (unsigned)failures_,
                       (unsigned)backoff);
       }
       if (failures_ >= 5)
-        Serial.println("[ws] repeated failures: check endpoint, static IP, network and token");
+        LOGLN("[ws] repeated failures: check endpoint, static IP, network and token");
       break;
     }
     case WStype_TEXT: {
@@ -113,10 +114,10 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
       StreamInfo si;
       if (parseStreamInfo((const char*)payload, si)) {
         bitrateKbps_ = si.bitrateKbps;
-        Serial.printf("[ws] STREAM_INFO %s %u Hz %uch %u kbps\n", si.codec.c_str(),
+        LOGF("[ws] STREAM_INFO %s %u Hz %uch %u kbps\n", si.codec.c_str(),
                       (unsigned)si.sampleRate, (unsigned)si.channels, (unsigned)si.bitrateKbps);
       } else {
-        Serial.println("[ws] unsupported or invalid STREAM_INFO");
+        LOGLN("[ws] unsupported or invalid STREAM_INFO");
       }
       break;
     }
@@ -132,23 +133,23 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
 void StreamClient::onBinary(const uint8_t* data, size_t length) {
   PacketView v = parsePacket(data, length);
   if (!v.ok) {  // hibás magic vagy hossz: a csomagot eldobjuk
-    if (++malformed_ % 100 == 1) Serial.printf("[ws] malformed packets: %u\n", (unsigned)malformed_);
+    if (++malformed_ % 100 == 1) LOGF("[ws] malformed packets: %u\n", (unsigned)malformed_);
     return;
   }
   if (v.status != lastStatus_) {
     lastStatus_ = v.status;
-    Serial.printf("[ws] mixer status=0x%02X\n", v.status);
+    LOGF("[ws] mixer status=0x%02X\n", v.status);
   }
   uint32_t gap = seq_.onPacket(v.seq);
   if (gap) {
     lost_ += gap;
-    Serial.printf("[ws] seq gap %u, total %u\n", (unsigned)gap, (unsigned)lost_);
+    LOGF("[ws] seq gap %u, total %u\n", (unsigned)gap, (unsigned)lost_);
   }
   if (v.len == 0) return;
   size_t written = ring_.write(v.payload, v.len);
   if (written < v.len) {  // túlcsordulás: szinkronvesztés, a puffert eldobjuk
     dropped_ += (uint32_t)(v.len - written);
     flush_ = true;
-    Serial.printf("[ws] buffer overflow, flushing (dropped %u bytes total)\n", (unsigned)dropped_);
+    LOGF("[ws] buffer overflow, flushing (dropped %u bytes total)\n", (unsigned)dropped_);
   }
 }

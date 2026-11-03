@@ -64,13 +64,24 @@ A szerver címe IP-literál vagy hosztnév lehet. A firmware a hosztnevet indul�
 
 ## 5. Fordítás és feltöltés
 
+Két build van:
+
+| Env | Soros napló | Mire való |
+|---|---|---|
+| `dev` | bekapcsolva (115200 baud) | fejlesztés, hibakeresés |
+| `prod` | kikapcsolva: a `Serial` el sem indul, a naplóhívások kiesnek a fordításból | kihelyezett eszköz |
+
 ```
-pio run -e rymcu-esp32-s3-devkitc-1 -t uploadfs   # data/config.json feltöltése (LittleFS)
-pio run -e rymcu-esp32-s3-devkitc-1 -t upload     # firmware fordítása és feltöltése
-pio device monitor                                # soros napló, 115200 baud
+pio run -e dev -t uploadfs    # data/config.json feltöltése (LittleFS)
+pio run -e dev -t upload      # firmware fordítása és feltöltése
+pio device monitor -e dev     # soros napló, 115200 baud
 ```
 
-Az `-e rymcu-esp32-s3-devkitc-1` kötelező: a `platformio.ini`-ben a `native` tesztkörnyezet is szerepel, és nélküle a `pio run` azt is megpróbálja lefordítani, illetve feltölteni.
+Éles eszközre ugyanez `-e prod`-dal. A `-e` nélküli `pio run` a `dev` buildet fordítja (`default_envs`). A `native` tesztkörnyezetet a `pio test -e native` futtatja.
+
+A naplózás a `src/Log.h` makróin megy (`LOGF`, `LOGLN`, `LOG_BEGIN`). Új naplósort ezekkel írj, ne közvetlenül a `Serial`-lal, különben a prod buildben is megjelenik. A prod build a ROM bootloader induló üzeneteit nem tudja elnémítani (ezeket a chip írja ki).
+
+A `setup.py` varázsló **Build** menüjében a **Build mód (dev/prod)** pontban választhatsz; az alapértelmezett a `dev`. A **Fordítás és feltöltés** és a **Soros monitor** a kiválasztott módot használja.
 
 Rögzített (pinelt) verziók a `platformio.ini`-ben: `espressif32@7.1.3` (Arduino-ESP32 2.0.17), `ArduinoJson@7.4.3`, `WebSockets@2.7.3`, `arduino-libhelix` `v0.9.4`.
 
@@ -80,7 +91,7 @@ Ha a felhasználói profil vagy a projekt útvonala nem ASCII karaktert tartalma
 
 Megoldás (bármelyik):
 
-- Állítsd be a `PLATFORMIO_BUILD_DIR` környezeti változót egy ASCII mappára abban a shellben, ahol a `pio`-t futtatod, például PowerShellben: `$env:PLATFORMIO_BUILD_DIR='C:/pio_build'; pio run -e rymcu-esp32-s3-devkitc-1 -t upload`.
+- Állítsd be a `PLATFORMIO_BUILD_DIR` környezeti változót egy ASCII mappára abban a shellben, ahol a `pio`-t futtatod, például PowerShellben: `$env:PLATFORMIO_BUILD_DIR='C:/pio_build'; pio run -e dev -t upload`.
 - Vagy költöztesd a projektet ASCII útvonalra.
 
 Gépspecifikus útvonalat ne írj a `platformio.ini`-be.
@@ -95,7 +106,7 @@ Gcc kell hozzá (Windowson pl. MinGW; a PlatformIO `toolchain-gccmingw32` csomag
 
 ## 8. Soros napló és hibaelhárítás
 
-Normál indulás sorrendje: `[boot] hangszoro`, `[cfg] loaded`, `[i2s] started, 44100 Hz ...`, `[net] connected, ip=...`, `[ws] connecting to <ip>:8766/...`, `[ws] connected`, `[ws] STREAM_INFO mp3 44100 Hz 1ch 128 kbps`, `[ws] mixer status=0x..`.
+Normál indulás sorrendje (`dev` build; a `prod` build nem ír naplót): `[boot] hangszoro`, `[cfg] loaded`, `[i2s] started, 44100 Hz ...`, `[net] connected, ip=...`, `[ws] connecting to <ip>:8766/...`, `[ws] connected`, `[ws] STREAM_INFO mp3 44100 Hz 1ch 128 kbps`, `[ws] mixer status=0x..`.
 
 | Napló / tünet | Jelentés, teendő |
 |---|---|

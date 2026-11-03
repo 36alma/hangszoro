@@ -7,6 +7,7 @@
 #include "services/Network.h"
 #include "services/RingBuffer.h"
 #include "services/StreamClient.h"
+#include "Log.h"
 
 namespace {
 
@@ -27,18 +28,18 @@ bool linkWasUp = true;
 void loadConfig() {
   cfg = defaultConfig();
   if (!LittleFS.begin(false)) {
-    Serial.println("[cfg] LittleFS mount failed, using defaults");
+    LOGLN("[cfg] LittleFS mount failed, using defaults");
     return;
   }
   File f = LittleFS.open("/config.json", "r");
   if (!f) {
-    Serial.println("[cfg] /config.json not found, using defaults");
+    LOGLN("[cfg] /config.json not found, using defaults");
     return;
   }
   String body = f.readString();
   f.close();
-  for (const auto& w : applyJson(cfg, body.c_str())) Serial.printf("[cfg] %s\n", w.c_str());
-  Serial.println("[cfg] loaded");
+  for (const auto& w : applyJson(cfg, body.c_str())) LOGF("[cfg] %s\n", w.c_str());
+  LOGLN("[cfg] loaded");
 }
 
 void onPcm(const int16_t* pcm, size_t samples, uint8_t channels, uint32_t rate, void*) {
@@ -89,16 +90,16 @@ void decoderTask(void*) {
 }  // namespace
 
 void setup() {
-  Serial.begin(115200);
+  LOG_BEGIN(115200);
   delay(300);
-  Serial.println("[boot] hangszoro");
+  LOGLN("[boot] hangszoro");
 
   loadConfig();
-  Serial.printf("[boot] device name: %s, hostname: %s\n", cfg.deviceName.c_str(),
+  LOGF("[boot] device name: %s, hostname: %s\n", cfg.deviceName.c_str(),
                 cfg.hostname.c_str());
 
   if (!audio.begin(cfg.bck, cfg.lrck, cfg.din, kInitialSampleRate)) {
-    Serial.println("[boot] audio init failed");
+    LOGLN("[boot] audio init failed");
   }
   ring = new RingBuffer((size_t)cfg.bufferMs * kMaxBytesPerMs);
   decoder.begin(onPcm, nullptr);
@@ -121,7 +122,7 @@ void loop() {
         beginFailures++;
         nextBeginAtMs = millis() + StreamClient::backoffMs(beginFailures);
         if (beginFailures == 5)
-          Serial.println("[ws] repeated start failures: check host, DNS and firewall settings");
+          LOGLN("[ws] repeated start failures: check host, DNS and firewall settings");
       }
     }
     if (clientStarted) client->loop();

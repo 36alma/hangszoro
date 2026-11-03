@@ -16,8 +16,12 @@ CONFIG_SAVED = Path("data/default-config.json")
 CONFIG_OUT = Path("data/config.json")
 # A projekt útvonala nem ASCII (Takács Dávid), ezért a pio-nak ASCII build mappa kell (README 6. pont).
 BUILD_DIR = "C:/pio_build"
-# A platformio.ini-ben a native tesztkörnyezet is ott van; -e nélkül a pio arra is lefutna és elbukna.
-PIO_ENV = "rymcu-esp32-s3-devkitc-1"
+# Build módok = a platformio.ini env nevei. A native tesztkörnyezet szándékosan nincs itt.
+BUILD_MODES = {
+    "dev": "dev - soros napló bekapcsolva",
+    "prod": "prod - soros napló kikapcsolva",
+}
+DEFAULT_BUILD_MODE = "dev"
 VERSION = "0.1.0"
 
 
@@ -272,7 +276,8 @@ class Build():
         self.defaultconfig = defaultconfig
         self.configure = configure
         self.port: Optional[str] = None
-        self.menu = MenuModel(choice=["config.json létrehozása","Eszköz kiválasztása","Fordítás és feltöltés","Soros monitor","Vissza"])
+        self.mode = DEFAULT_BUILD_MODE
+        self.menu = MenuModel(choice=["config.json létrehozása","Eszköz kiválasztása","Build mód (dev/prod)","Fordítás és feltöltés","Soros monitor","Vissza"])
 
     def make_config(self) -> bool:
         device = self.configure.device
@@ -304,6 +309,14 @@ class Build():
         if choice in labels:
             self.port = labels[choice]
 
+    def choose_mode(self) -> None:
+        labels = {label: mode for mode, label in BUILD_MODES.items()}
+        choice = questionary.select("Melyik build?", choices=[*labels, "Vissza"],
+                                    default=BUILD_MODES[self.mode]).ask()
+        if choice in labels:
+            self.mode = labels[choice]
+            print(f"Build mód: {BUILD_MODES[self.mode]}")
+
     def pio(self, *args: str) -> int:
         exe = shutil.which("pio") or shutil.which("platformio")
         if exe is None:
@@ -323,22 +336,26 @@ class Build():
             return
         if not self.make_config():
             return
+        print(f"Build mód: {BUILD_MODES[self.mode]}\n")
         for target in ("uploadfs", "upload"):
-            if self.pio("run", "-e", PIO_ENV, "-t", target, "--upload-port", self.port) != 0:
+            if self.pio("run", "-e", self.mode, "-t", target, "--upload-port", self.port) != 0:
                 print(f"A(z) {target} hibával leállt.")
                 return
-        print("Kész.")
+        print(f"Kész ({self.mode}).")
 
     def monitor(self) -> None:
         if self.port is None:
             print("Előbb válassz eszközt.")
             return
-        self.pio("device", "monitor", "-e", PIO_ENV, "--port", self.port)
+        if self.mode == "prod":
+            print("Figyelem: a prod firmware nem ír soros naplót, csak a bootloader üzenetei látszanak.\n")
+        self.pio("device", "monitor", "-e", self.mode, "--port", self.port)
 
     def __call__(self) -> None:
         while True:
             clear()
-            print(f"Eszköz: {self.port or 'nincs kiválasztva'}\n")
+            print(f"Eszköz: {self.port or 'nincs kiválasztva'}")
+            print(f"Build mód: {BUILD_MODES[self.mode]}\n")
             choice = questionary.select(self.menu.question, choices=self.menu.choice).ask()
             if choice in (None, "Vissza"):
                 break
@@ -347,6 +364,8 @@ class Build():
                 self.make_config()
             elif choice == "Eszköz kiválasztása":
                 self.choose_port()
+            elif choice == "Build mód (dev/prod)":
+                self.choose_mode()
             elif choice == "Fordítás és feltöltés":
                 self.upload()
             elif choice == "Soros monitor":

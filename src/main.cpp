@@ -83,6 +83,7 @@ void decoderTask(void*) {
   uint8_t chunk[512];
   bool primed = false;
   bool muted = false;
+  LOGLN("[dec] task running");
   for (;;) {
     reportSignal();
     // Szétkapcsolás, új kapcsolat vagy túlcsordulás: lejátszás le, puffer és dekóder törlése.
@@ -121,6 +122,7 @@ void setup() {
   LOG_BEGIN(115200);
   delay(300);
   LOGLN("[boot] hangszoro");
+  LOGF("[boot] build %s %s\n", __DATE__, __TIME__);
 
   loadConfig();
   LOGF("[boot] device name: %s, hostname: %s\n", cfg.deviceName.c_str(),
@@ -135,7 +137,8 @@ void setup() {
 
   net.connect(cfg);
 
-  xTaskCreatePinnedToCore(decoderTask, "decoder", 16384, nullptr, 2, nullptr, 1);
+  if (xTaskCreatePinnedToCore(decoderTask, "decoder", 16384, nullptr, 2, nullptr, 1) != pdPASS)
+    LOGLN("[boot] decoder task start failed");
 }
 
 void loop() {

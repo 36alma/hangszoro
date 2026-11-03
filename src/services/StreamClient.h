@@ -15,6 +15,16 @@ class RemoteAwareWs : public WebSocketsClient {
   IPAddress remoteIp() { return _client.tcp ? _client.tcp->remoteIP() : IPAddress(); }
 };
 
+// A kapcsolat állapota és számlálói, bármelyik taskból olvasható pillanatkép.
+struct StreamStats {
+  bool connected;      // a tűzfal-ellenőrzés után kapcsolódva
+  uint32_t failures;   // egymás utáni szétkapcsolások (sikeres kapcsolatnál 0)
+  uint32_t dropped;    // túlcsordulás miatt eldobott bájtok
+  uint32_t malformed;  // hibás csomagok
+  uint32_t lost;       // a szekvenciaszámokból hiányzó csomagok
+  uint32_t lastRxMs;   // millis() az utolsó fogadott üzenetkor
+};
+
 class StreamClient {
  public:
   StreamClient(const Config& cfg, RingBuffer& ring);
@@ -24,6 +34,8 @@ class StreamClient {
   // A loop()-ból hívandó.
   void loop();
   bool connected() { return ws_.isConnected(); }
+  // Bármelyik taskból hívható (pl. a debug kijelzőről).
+  StreamStats stats() const;
 
   // A dekóder task hívja: igaz, ha ürítenie kell a puffert és a dekódert.
   bool takeFlushRequest() { return flush_.exchange(false); }
@@ -48,11 +60,13 @@ class StreamClient {
   String authHeader_;
   std::atomic<bool> flush_{false};
   std::atomic<uint32_t> bitrateKbps_{128};
-  uint32_t failures_ = 0;
-  uint32_t dropped_ = 0;
-  uint32_t malformed_ = 0;
-  uint32_t lost_ = 0;
+  // A loop() taskja írja, a debug kijelző taskja olvassa.
+  std::atomic<bool> connected_{false};
+  std::atomic<uint32_t> failures_{0};
+  std::atomic<uint32_t> dropped_{0};
+  std::atomic<uint32_t> malformed_{0};
+  std::atomic<uint32_t> lost_{0};
   uint8_t lastStatus_ = 0xFF;
-  uint32_t lastRxMs_ = 0;
+  std::atomic<uint32_t> lastRxMs_{0};
   static constexpr uint32_t kRxTimeoutMs = 5000;
 };

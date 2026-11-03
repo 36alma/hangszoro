@@ -23,7 +23,12 @@ uint32_t StreamClient::backoffMs(uint32_t attempt) {
   return kBackoffMs[idx < last ? idx : last];
 }
 
-uint32_t StreamClient::nextBackoffMs() const { return backoffMs(failures_); }
+uint32_t StreamClient::nextBackoffMs() const { return backoffMs(failures_.load()); }
+
+StreamStats StreamClient::stats() const {
+  return StreamStats{connected_.load(), failures_.load(), dropped_.load(),
+                     malformed_.load(),  lost_.load(),     lastRxMs_.load()};
+}
 
 bool StreamClient::begin() {
   IPAddress ip;
@@ -57,7 +62,7 @@ bool StreamClient::begin() {
 void StreamClient::loop() {
   ws_.loop();
   // Vételi figyelő: a szerver folyamatosan küld, így hallgatás = néma kapcsolatvesztés.
-  if (ws_.isConnected() && (uint32_t)(millis() - lastRxMs_) > kRxTimeoutMs) {
+  if (ws_.isConnected() && (uint32_t)(millis() - lastRxMs_.load()) > kRxTimeoutMs) {
     LOGLN("[ws] no data for 5 s, reconnecting");
     lastRxMs_ = millis();
     ws_.disconnect();  // a DISCONNECTED kezelő végzi a várakozást és az ürítést
@@ -70,10 +75,12 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
       uint32_t remote = toHostOrder(ws_.remoteIp());
       if (!firewall_.verifyRemote(remote)) {
         LOGLN("[fw] remote IP does not match the allowlist, disconnecting");
+        connected_ = false;
         ws_.disconnect();
         return;
       }
       LOGLN("[ws] connected");
+      connected_ = true;
       lastRxMs_ = millis();
       failures_ = 0;
       ws_.setReconnectInterval(kBackoffMs[0]);
@@ -83,6 +90,7 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
       break;
     }
     case WStype_DISCONNECTED: {
+      connected_ = false;
       failures_++;
       uint32_t backoff = nextBackoffMs();
       ws_.setReconnectInterval(backoff);
@@ -96,13 +104,13 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
       }
       if (reason[0] != '\0') {
         LOGF("[ws] disconnected (attempt %u, reason: %s), retry in %u ms\n",
-                      (unsigned)failures_, reason, (unsigned)backoff);
+                      (unsigned)failures_.load(), reason, (unsigned)backoff);
         if (strstr(reason, "HTTP 403") != nullptr)
           LOGLN(
               "[ws] server rejected the handshake (HTTP 403): the token or the registered IP of "
               "this device is invalid, expired, or the device is disabled");
       } else {
-        LOGF("[ws] disconnected (attempt %u), retry in %u ms\n", (unsigned)failures_,
+        LOGF("[ws] disconnected (attempt %u), retry in %u ms\n", (unsigned)failures_.load(),
                       (unsigned)backoff);
       }
       if (failures_ >= 5)
@@ -133,7 +141,8 @@ void StreamClient::onEvent(WStype_t type, uint8_t* payload, size_t length) {
 void StreamClient::onBinary(const uint8_t* data, size_t length) {
   PacketView v = parsePacket(data, length);
   if (!v.ok) {  // hibás magic vagy hossz: a csomagot eldobjuk
-    if (++malformed_ % 100 == 1) LOGF("[ws] malformed packets: %u\n", (unsigned)malformed_);
+    uint32_t malformed = ++malformed_;
+    if (malformed % 100 == 1) LOGF("[ws] malformed packets: %u\n", (unsigned)malformed);
     return;
   }
   if (v.status != lastStatus_) {
@@ -142,14 +151,14 @@ void StreamClient::onBinary(const uint8_t* data, size_t length) {
   }
   uint32_t gap = seq_.onPacket(v.seq);
   if (gap) {
-    lost_ += gap;
-    LOGF("[ws] seq gap %u, total %u\n", (unsigned)gap, (unsigned)lost_);
+    uint32_t lost = lost_ += gap;
+    LOGF("[ws] seq gap %u, total %u\n", (unsigned)gap, (unsigned)lost);
   }
   if (v.len == 0) return;
   size_t written = ring_.write(v.payload, v.len);
   if (written < v.len) {  // túlcsordulás: szinkronvesztés, a puffert eldobjuk
-    dropped_ += (uint32_t)(v.len - written);
+    uint32_t dropped = dropped_ += (uint32_t)(v.len - written);
     flush_ = true;
-    LOGF("[ws] buffer overflow, flushing (dropped %u bytes total)\n", (unsigned)dropped_);
+    LOGF("[ws] buffer overflow, flushing (dropped %u bytes total)\n", (unsigned)dropped);
   }
 }

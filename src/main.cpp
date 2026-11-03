@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 
+#include <atomic>
+
 #include "model/Config.h"
 #include "services/AudioOut.h"
 #include "services/Decoder.h"
@@ -24,7 +26,7 @@ SignalMeter meter;  // csak a dekóder task használja (onPcm és reportSignal)
 RingBuffer* ring = nullptr;
 StreamClient* client = nullptr;
 bool clientStarted = false;
-uint32_t beginFailures = 0;
+std::atomic<uint32_t> beginFailures{0};  // a debug kijelző is olvassa
 uint32_t nextBeginAtMs = 0;
 bool linkWasUp = true;
 

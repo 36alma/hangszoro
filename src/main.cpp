@@ -6,6 +6,7 @@
 #include "services/Decoder.h"
 #include "services/Network.h"
 #include "services/RingBuffer.h"
+#include "services/SignalMeter.h"
 #include "services/StreamClient.h"
 #include "Log.h"
 
@@ -13,11 +14,13 @@ namespace {
 
 constexpr uint32_t kInitialSampleRate = 44100;
 constexpr size_t kMaxBytesPerMs = 40;  // 320 kbps
+constexpr uint32_t kSignalReportMs = 1000;
 
 Config cfg;
 Network net;
 AudioOut audio;
 Decoder decoder;
+SignalMeter meter;  // csak a dekóder task használja (onPcm és reportSignal)
 RingBuffer* ring = nullptr;
 StreamClient* client = nullptr;
 bool clientStarted = false;
@@ -43,8 +46,32 @@ void loadConfig() {
 }
 
 void onPcm(const int16_t* pcm, size_t samples, uint8_t channels, uint32_t rate, void*) {
+  // A STREAM_INFO csak bejelentés; ez a ténylegesen dekódolt MP3 csatornaszáma.
+  static uint8_t lastChannels = 0;
+  if (channels != lastChannels) {
+    LOGF("[dec] decoded MP3: %u ch, %u Hz\n", (unsigned)channels, (unsigned)rate);
+    lastChannels = channels;
+  }
   if (rate != audio.sampleRate()) audio.setSampleRate(rate);
+  if (HANGSZORO_SERIAL_LOG) meter.add(pcm, samples / channels, channels);
   audio.write(pcm, samples / channels, channels);
+}
+
+// Másodpercenként kiírja, hogy megy-e hang az I2S-re, csatornánkénti csúcsszinttel.
+void reportSignal() {
+  if (!HANGSZORO_SERIAL_LOG) return;
+  static uint32_t lastMs = 0;
+  uint32_t now = millis();
+  if (now - lastMs < kSignalReportMs) return;
+  lastMs = now;
+  SignalMeter::Report r = meter.take();
+  if (r.state == SignalMeter::State::NoData) {
+    LOGF("[sig] NO DATA  (nothing decoded, buffered %u B)\n", (unsigned)ring->available());
+    return;
+  }
+  LOGF("[sig] %-7s L=%6.1f dBFS  R=%6.1f dBFS\n",
+       r.state == SignalMeter::State::Signal ? "SIGNAL" : "SILENCE", SignalMeter::toDbfs(r.peakL),
+       SignalMeter::toDbfs(r.peakR));
 }
 
 void drain(uint8_t* scratch, size_t scratchSize) {
@@ -57,6 +84,7 @@ void decoderTask(void*) {
   bool primed = false;
   bool muted = false;
   for (;;) {
+    reportSignal();
     // Szétkapcsolás, új kapcsolat vagy túlcsordulás: lejátszás le, puffer és dekóder törlése.
     if (client->takeFlushRequest()) {
       drain(chunk, sizeof(chunk));

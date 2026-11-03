@@ -122,4 +122,8 @@ Normál indulás sorrendje (`dev` build; a `prod` build nem ír naplót): `[boot
 | `[ws] malformed packets: N` | Hibás csomagok érkeztek, eldobva. |
 | `[ws] mixer status=0x..` | A mixer állapota: 1 zene, 2 mikrofon, 4 csengő, 0 csend. |
 | `[i2s] driver install failed`, `[i2s] set pin failed` | Az I2S nem indult: ellenőrizd a tűket (nem lehetnek foglalt GPIO-k). |
+| `[dec] decoded MP3: N ch, R Hz` | A ténylegesen dekódolt MP3 csatornaszáma és mintavétele (változáskor íródik ki). Mono (`1 ch`) jel mindkét oldalra kimegy. |
+| `[sig] SIGNAL L=.. dBFS R=.. dBFS` | Másodpercenként: hang megy az I2S-re, csatornánkénti csúcsszinttel (0 dBFS a maximum). Ha az egyik oldal -99, oda nem megy jel. |
+| `[sig] SILENCE ...` | Jön és dekódolódik az adat, de csend (minden csúcs -60 dBFS alatt). |
+| `[sig] NO DATA (nothing decoded, buffered N B)` | Semmi nem dekódolódott az elmúlt másodpercben: nincs stream, vagy még előpufferel. |
 | Nincs hang, de a napló rendben | Ellenőrizd a PCM5102A bekötést (SCK, FMT, XSMT) és a tápot. |

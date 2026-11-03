@@ -10,6 +10,7 @@
 #include "services/RingBuffer.h"
 #include "services/SignalMeter.h"
 #include "services/StreamClient.h"
+#include "display/DebugDisplay.h"
 #include "Log.h"
 
 namespace {
@@ -55,6 +56,7 @@ void onPcm(const int16_t* pcm, size_t samples, uint8_t channels, uint32_t rate, 
     lastChannels = channels;
   }
   if (rate != audio.sampleRate()) audio.setSampleRate(rate);
+  debugdisplay::onPcm(pcm, samples / channels, channels, rate);  // csak dev buildben, ha van kijelző
   if (HANGSZORO_SERIAL_LOG) meter.add(pcm, samples / channels, channels);
   audio.write(pcm, samples / channels, channels);
 }
@@ -136,6 +138,8 @@ void setup() {
   ring = new RingBuffer((size_t)cfg.bufferMs * kMaxBytesPerMs);
   decoder.begin(onPcm, nullptr);
   client = new StreamClient(cfg, *ring);
+  // A WiFi-csatlakozás előtt, hogy közben már a "NO WIFI" látsszon.
+  debugdisplay::begin(cfg, *client, *ring, beginFailures);
 
   net.connect(cfg);
 

@@ -21,6 +21,25 @@ PCM5102A modul bekötése (az alapértelmezett GPIO-k a `config.json`-ból módo
 | VIN | 3,3 V (vagy a modul leírása szerint) |
 | GND | GND |
 
+### OLED debug kijelző (csak a `dev` build)
+
+Egy 1.3"-os, 128×64-es SH1106 I2C OLED gép nélkül mutatja az állapotot. A `prod` buildbe nem kerül bele.
+
+| OLED | ESP32-S3 |
+|---|---|
+| GND | GND |
+| VCC | 3,3 V |
+| SCL | GPIO 18 (`oled.scl`) |
+| SDA | GPIO 8 (`oled.sda`) |
+
+A BOOT gomb lépteti az oldalakat (1 → 2 → 3 → 1):
+
+1. **Áttekintés:** eszköznév és WiFi-jelerősség, IP és stream-állapot (`WS:OK`, `WS:..` kapcsolódik, `WS:E3` 3 hiba után újrapróbál, `WS:--` nincs WiFi), bitráta, mintavétel és puffer, bal/jobb szintcsík, `SIGNAL`/`SILENCE`/`NO DATA`, elveszett csomagok és uptime.
+2. **Hang:** mintavétel kHz-ben és spektrum 100 Hz-től 16 kHz-ig.
+3. **Részletek:** hibaszámlálók, az utolsó csomag kora, szabad memória, uptime, build dátuma.
+
+Ha nincs kijelző bekötve, a napló egyszer kiírja: `[oled] no display at 0x3C ...`, és minden más ugyanúgy megy.
+
 A tűk a `config.json`-ban átállíthatók (0..48). Ne használj olyan GPIO-t, amelyet a panel a flash-hez, a PSRAM-hoz vagy az USB-hez használ: ellenőrizd a panel (RYMCU ESP32-S3-DevKitC-1) kiosztását.
 
 ## 3. Szerveroldali előfeltételek
@@ -38,7 +57,7 @@ cp data/config.example.json data/config.json       (Linux/macOS)
 
 Töltsd ki a `data/config.json`-t. **Titkot tartalmaz (WiFi jelszó, token), ezért a git figyelmen kívül hagyja; ne oszd meg.**
 
-Az érvénytelen mezőt a firmware figyelmeztetéssel (`[cfg] config.json: ...`) kihagyja, és az alapértéket használja. A `net`, az `i2s` és a `buffer` csoport egyben érvényes vagy egyben elutasított. Teljesen hibás JSON esetén minden alapérték marad.
+Az érvénytelen mezőt a firmware figyelmeztetéssel (`[cfg] config.json: ...`) kihagyja, és az alapértéket használja. A `net`, az `i2s`, az `oled` és a `buffer` csoport egyben érvényes vagy egyben elutasított. Teljesen hibás JSON esetén minden alapérték marad.
 
 | Mező | Jelentés | Alapérték | Érvényes érték |
 |---|---|---|---|
@@ -57,6 +76,8 @@ Az érvénytelen mezőt a firmware figyelmeztetéssel (`[cfg] config.json: ...`)
 | `i2s.bck` | BCK GPIO | `15` | 0..48 |
 | `i2s.lrck` | LRCK GPIO | `16` | 0..48 |
 | `i2s.din` | DIN GPIO | `17` | 0..48, a három tű páronként különböző |
+| `oled.sda` | OLED SDA GPIO (csak `dev` build) | `8` | 0..48 |
+| `oled.scl` | OLED SCL GPIO (csak `dev` build) | `18` | 0..48, különbözik az `oled.sda`-tól, és egyik sem I2S tű |
 | `buffer.ms` | Pufferméret (ms) | `500` | 50..5000 |
 | `buffer.prebuffer_ms` | Előpuffer lejátszás előtt (ms) | `150` | 20..5000, nem lehet nagyobb a `buffer.ms`-nél |
 
@@ -83,7 +104,7 @@ A naplózás a `src/Log.h` makróin megy (`LOGF`, `LOGLN`, `LOG_BEGIN`). Új nap
 
 A `setup.py` varázsló **Build** menüjében a **Build mód (dev/prod)** pontban választhatsz; az alapértelmezett a `dev`. A **Fordítás és feltöltés** és a **Soros monitor** a kiválasztott módot használja.
 
-Rögzített (pinelt) verziók a `platformio.ini`-ben: `espressif32@7.1.3` (Arduino-ESP32 2.0.17), `ArduinoJson@7.4.3`, `WebSockets@2.7.3`, `arduino-libhelix` `v0.9.4`.
+Rögzített (pinelt) verziók a `platformio.ini`-ben: `espressif32@7.1.3` (Arduino-ESP32 2.0.17), `ArduinoJson@7.4.3`, `WebSockets@2.7.3`, `arduino-libhelix` `v0.9.4`, és csak a `dev` buildben `U8g2@2.36.18`.
 
 ## 6. Windows: nem ASCII karaktert tartalmazó útvonal
 
@@ -102,7 +123,7 @@ Gépspecifikus útvonalat ne írj a `platformio.ini`-be.
 pio test -e native
 ```
 
-Gcc kell hozzá (Windowson pl. MinGW; a PlatformIO `toolchain-gccmingw32` csomagja megfelel). A natív környezet `-std=gnu++14`-gyel fordít. Nagyon hosszú `PATH` esetén (8191 karakteres korlát) a fordító indítása érthetetlen hibával elbukhat: ilyenkor rövid `PATH`-szal futtasd, például PowerShellben: `$env:PATH='C:\.platformio\packages\toolchain-gccmingw32\bin;C:\Windows\System32;C:\Windows'`. Várt eredmény: 50 teszt, 5 csomag sikeres.
+Gcc kell hozzá (Windowson pl. MinGW; a PlatformIO `toolchain-gccmingw32` csomagja megfelel). A natív környezet `-std=gnu++14`-gyel fordít. Nagyon hosszú `PATH` esetén (8191 karakteres korlát) a fordító indítása érthetetlen hibával elbukhat: ilyenkor rövid `PATH`-szal futtasd, például PowerShellben: `$env:PATH='C:\.platformio\packages\toolchain-gccmingw32\bin;C:\Windows\System32;C:\Windows'`. Várt eredmény: 93 teszt, 10 csomag sikeres.
 
 ## 8. Soros napló és hibaelhárítás
 

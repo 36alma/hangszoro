@@ -24,6 +24,10 @@
     "lrck": 16,
     "din": 17
   },
+  "oled": {
+    "sda": 8,
+    "scl": 18
+  },
   "buffer": {
     "ms": 500,
     "prebuffer_ms": 150

@@ -87,6 +87,8 @@ Config defaultConfig() {
   c.bck = CFG_I2S_BCK;
   c.lrck = CFG_I2S_LRCK;
   c.din = CFG_I2S_DIN;
+  c.oledSda = CFG_OLED_SDA;
+  c.oledScl = CFG_OLED_SCL;
   c.bufferMs = CFG_BUFFER_MS;
   c.prebufferMs = CFG_PREBUFFER_MS;
   return c;
@@ -198,6 +200,26 @@ Warnings applyJson(Config& cfg, const char* json) {
     }
   }
 
+  // oled: egy csoport, a tűk különbözők, és nem ütköznek az I2S tűkkel
+  {
+    JsonVariantConst oled = root["oled"];
+    long sda = cfg.oledSda, scl = cfg.oledScl;
+    bool any = false;
+    any |= readInt(oled["sda"], "oled.sda", 0, 48, sda, w);
+    any |= readInt(oled["scl"], "oled.scl", 0, 48, scl, w);
+    if (any) {
+      Config candidate = cfg;
+      candidate.oledSda = (int)sda;
+      candidate.oledScl = (int)scl;
+      if (!oledPinsValid(candidate)) {
+        warn(w, "oled pins must be distinct and must not overlap i2s pins; oled group ignored");
+      } else {
+        cfg.oledSda = candidate.oledSda;
+        cfg.oledScl = candidate.oledScl;
+      }
+    }
+  }
+
   // buffer: egy csoport, az előpuffer nem lehet nagyobb a pufferenél
   {
     JsonVariantConst buf = root["buffer"];
@@ -216,4 +238,11 @@ Warnings applyJson(Config& cfg, const char* json) {
   }
 
   return w;
+}
+
+bool oledPinsValid(const Config& cfg) {
+  auto inRange = [](int p) { return p >= 0 && p <= 48; };
+  auto isI2s = [&cfg](int p) { return p == cfg.bck || p == cfg.lrck || p == cfg.din; };
+  return inRange(cfg.oledSda) && inRange(cfg.oledScl) && cfg.oledSda != cfg.oledScl &&
+         !isI2s(cfg.oledSda) && !isI2s(cfg.oledScl);
 }

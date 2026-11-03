@@ -187,6 +187,48 @@ void test_token_value_never_in_warnings() {
   TEST_ASSERT_FALSE(anyContains(w, "invalid JSON"));
 }
 
+void test_oled_defaults() {
+  Config c = defaultConfig();
+  TEST_ASSERT_EQUAL_INT(8, c.oledSda);
+  TEST_ASSERT_EQUAL_INT(18, c.oledScl);
+  TEST_ASSERT_TRUE(oledPinsValid(c));
+}
+
+void test_oled_override() {
+  Config c = defaultConfig();
+  TEST_ASSERT_EQUAL(0, applyJson(c, R"({"oled":{"sda":4,"scl":5}})").size());
+  TEST_ASSERT_EQUAL_INT(4, c.oledSda);
+  TEST_ASSERT_EQUAL_INT(5, c.oledScl);
+}
+
+void test_oled_same_pins_rejected() {
+  Config c = defaultConfig();
+  auto w = applyJson(c, R"({"oled":{"sda":4,"scl":4}})");
+  TEST_ASSERT_TRUE(anyContains(w, "oled group ignored"));
+  TEST_ASSERT_EQUAL_INT(8, c.oledSda);
+  TEST_ASSERT_EQUAL_INT(18, c.oledScl);
+}
+
+void test_oled_overlaps_i2s_rejected() {
+  Config c = defaultConfig();
+  auto w = applyJson(c, R"({"oled":{"sda":15,"scl":5}})");  // 15 = i2s.bck
+  TEST_ASSERT_TRUE(anyContains(w, "oled group ignored"));
+  TEST_ASSERT_EQUAL_INT(8, c.oledSda);
+}
+
+void test_oled_out_of_range() {
+  Config c = defaultConfig();
+  auto w = applyJson(c, R"({"oled":{"sda":49}})");
+  TEST_ASSERT_TRUE(anyContains(w, "oled.sda is out of range"));
+  TEST_ASSERT_EQUAL_INT(8, c.oledSda);
+}
+
+void test_oled_default_conflicts_with_custom_i2s() {
+  Config c = defaultConfig();
+  TEST_ASSERT_EQUAL(0, applyJson(c, R"({"i2s":{"bck":8,"lrck":2,"din":3}})").size());
+  TEST_ASSERT_FALSE(oledPinsValid(c));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_defaults);
@@ -209,5 +251,11 @@ int main() {
   RUN_TEST(test_buffer_range);
   RUN_TEST(test_prebuffer_must_not_exceed_buffer);
   RUN_TEST(test_token_value_never_in_warnings);
+  RUN_TEST(test_oled_defaults);
+  RUN_TEST(test_oled_override);
+  RUN_TEST(test_oled_same_pins_rejected);
+  RUN_TEST(test_oled_overlaps_i2s_rejected);
+  RUN_TEST(test_oled_out_of_range);
+  RUN_TEST(test_oled_default_conflicts_with_custom_i2s);
   return UNITY_END();
 }

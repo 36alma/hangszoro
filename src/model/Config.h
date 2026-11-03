@@ -24,6 +24,9 @@ struct Config {
   int lrck = 0;
   int din = 0;
 
+  int oledSda = 0;
+  int oledScl = 0;
+
   uint32_t bufferMs = 0;
   uint32_t prebufferMs = 0;
 };
@@ -35,3 +38,6 @@ Config defaultConfig();
 // és mindegyikről figyelmeztetést ad vissza. A `net`, az `i2s` és a `buffer`
 // csoport egyben érvényes vagy egyben elutasított. A token értékét nem írja a figyelmeztetésekbe.
 std::vector<std::string> applyJson(Config& cfg, const char* json);
+
+// Igaz, ha az OLED tűk 0..48 között vannak, különbözők, és egyik sem I2S tű.
+bool oledPinsValid(const Config& cfg);

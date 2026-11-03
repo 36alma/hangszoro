@@ -21,5 +21,9 @@
 #define CFG_I2S_LRCK 16
 #define CFG_I2S_DIN 17
 
+// OLED debug kijelző (SH1106, I2C), csak a dev buildben használt.
+#define CFG_OLED_SDA 8
+#define CFG_OLED_SCL 18
+
 #define CFG_BUFFER_MS 500
 #define CFG_PREBUFFER_MS 150

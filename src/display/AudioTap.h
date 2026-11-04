@@ -4,10 +4,10 @@
 
 #include <atomic>
 
-#include "../services/RingBuffer.h"
+#include "../services/AudioStream.h"
 
 // PCM-másolat a dekóder task (író) és a kijelző task (olvasó) között.
-// Mindig sztereó int16 kereteket tárol (4 bájt), zár nélkül (SPSC RingBuffer).
+// Mindig sztereó int16 kereteket tárol (4 bájt), FreeRTOS StreamBuffer-en szálbiztosan.
 class AudioTap {
  public:
   explicit AudioTap(size_t capacityFrames);
@@ -19,14 +19,14 @@ class AudioTap {
   // Csak a kijelző task hívja. Legfeljebb maxFrames sztereó keret (L,R,L,R…); visszaadja a darabszámot.
   size_t pull(int16_t* outStereo, size_t maxFrames);
 
-  uint32_t sampleRate() const { return sampleRate_.load(std::memory_order_relaxed); }  // előtte 0
-  uint8_t channels() const { return channels_.load(std::memory_order_relaxed); }       // előtte 0
+  uint32_t sampleRate() const { return sampleRate_.load(std::memory_order_acquire); }
+  uint8_t channels() const { return channels_.load(std::memory_order_acquire); }
 
  private:
   static constexpr size_t kFrameBytes = 2 * sizeof(int16_t);
   static constexpr size_t kChunkFrames = 256;
 
-  RingBuffer ring_;
+  AudioStream stream_;
   std::atomic<uint32_t> sampleRate_{0};
   std::atomic<uint8_t> channels_{0};
 };

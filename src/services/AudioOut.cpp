@@ -55,18 +55,31 @@ void AudioOut::write(const int16_t* pcm, size_t frames, uint8_t channels) {
   size_t written = 0;
   const TickType_t timeout = pdMS_TO_TICKS(1000);
   if (channels == 2) {
-    i2s_write(kPort, pcm, frames * 4, &written, timeout);
+    const size_t totalBytes = frames * 4;
+    esp_err_t err = i2s_write(kPort, pcm, totalBytes, &written, timeout);
+    if (err != ESP_OK) {
+      LOGF("[i2s] write error: %d\n", err);
+    } else if (written != totalBytes) {
+      LOGF("[i2s] incomplete write: %u/%u bytes\n", (unsigned)written, (unsigned)totalBytes);
+    }
     return;
   }
   while (frames > 0) {
     size_t n = frames < kChunkFrames ? frames : kChunkFrames;
     for (size_t i = 0; i < n; i++) stereo_[2 * i] = stereo_[2 * i + 1] = pcm[i];
-    i2s_write(kPort, stereo_, n * 4, &written, timeout);
+    const size_t totalBytes = n * 4;
+    esp_err_t err = i2s_write(kPort, stereo_, totalBytes, &written, timeout);
+    if (err != ESP_OK) {
+      LOGF("[i2s] write error: %d (mono frame %u/%u)\n", err, (unsigned)(frames - n), (unsigned)frames);
+      break;
+    } else if (written != totalBytes) {
+      LOGF("[i2s] incomplete write: %u/%u bytes (mono frame %u/%u)\n", (unsigned)written, (unsigned)totalBytes, (unsigned)(frames - n), (unsigned)frames);
+    }
     pcm += n;
     frames -= n;
   }
 }
 
-void AudioOut::mute() {
+void AudioOut::clearOutput() {
   if (started_) i2s_zero_dma_buffer(kPort);
 }

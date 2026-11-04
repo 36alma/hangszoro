@@ -86,7 +86,9 @@ void drain(uint8_t* scratch, size_t scratchSize) {
 void decoderTask(void*) {
   uint8_t chunk[512];
   bool primed = false;
-  bool muted = false;
+  // Igaz, ha a DMA-t már kinulláztuk ebben a várakozásban; így előpufferelés
+  // közben nem töröljük 10 ms-onként újra.
+  bool outputCleared = false;
   LOGLN("[dec] task running");
   for (;;) {
     reportSignal();
@@ -94,22 +96,22 @@ void decoderTask(void*) {
     if (client->takeFlushRequest()) {
       drain(chunk, sizeof(chunk));
       decoder.reset();
-      audio.mute();
-      muted = true;
+      audio.clearOutput();
+      outputCleared = true;
       primed = false;
     }
     if (!primed) {
       size_t prebuffer = (size_t)cfg.prebufferMs * client->bitrateKbps() / 8;
       if (ring->available() < prebuffer) {
-        if (!muted) {
-          audio.mute();
-          muted = true;
+        if (!outputCleared) {
+          audio.clearOutput();
+          outputCleared = true;
         }
         vTaskDelay(pdMS_TO_TICKS(10));
         continue;
       }
       primed = true;
-      muted = false;
+      outputCleared = false;  // lejátszás indul; a következő kiürüléskor újra törlünk
     }
     size_t n = ring->read(chunk, sizeof(chunk));
     if (n == 0) {  // kiürült: újra előpufferelünk, hogy ne ropogjon

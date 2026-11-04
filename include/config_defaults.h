@@ -17,9 +17,9 @@
 #define CFG_ENDPOINT_PATH "/api/mixer/stream"
 #define CFG_ENDPOINT_TOKEN ""
 
-#define CFG_I2S_BCK 15
+#define CFG_I2S_BCK 17
 #define CFG_I2S_LRCK 16
-#define CFG_I2S_DIN 17
+#define CFG_I2S_DIN 15
 
 // OLED debug kijelző (SH1106, I2C), csak a dev buildben használt.
 #define CFG_OLED_SDA 8

@@ -19,7 +19,9 @@ void test_defaults() {
   TEST_ASSERT_EQUAL_STRING("/api/mixer/stream", c.path.c_str());
   TEST_ASSERT_EQUAL_UINT32(500, c.bufferMs);
   TEST_ASSERT_EQUAL_UINT32(150, c.prebufferMs);
-  TEST_ASSERT_EQUAL_INT(15, c.bck);
+  TEST_ASSERT_EQUAL_INT(17, c.bck);
+  TEST_ASSERT_EQUAL_INT(16, c.lrck);
+  TEST_ASSERT_EQUAL_INT(15, c.din);
 }
 
 void test_device_identity() {
@@ -157,7 +159,7 @@ void test_i2s_pins_must_be_distinct_and_in_range() {
   Config c = defaultConfig();
   TEST_ASSERT_FALSE(applyJson(c, R"({"i2s":{"bck":4,"lrck":4,"din":5}})").empty());
   TEST_ASSERT_FALSE(applyJson(c, R"({"i2s":{"bck":99}})").empty());
-  TEST_ASSERT_EQUAL_INT(15, c.bck);
+  TEST_ASSERT_EQUAL_INT(17, c.bck);
   TEST_ASSERT_EQUAL_INT(16, c.lrck);
 }
 
@@ -211,7 +213,7 @@ void test_oled_same_pins_rejected() {
 
 void test_oled_overlaps_i2s_rejected() {
   Config c = defaultConfig();
-  auto w = applyJson(c, R"({"oled":{"sda":15,"scl":5}})");  // 15 = i2s.bck
+  auto w = applyJson(c, R"({"oled":{"sda":15,"scl":5}})");  // 15 = i2s.din
   TEST_ASSERT_TRUE(anyContains(w, "oled group ignored"));
   TEST_ASSERT_EQUAL_INT(8, c.oledSda);
 }

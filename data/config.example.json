@@ -20,9 +20,9 @@
     "token": "IDE_A_TOKEN_AZ_ADMIN_FELULETROL"
   },
   "i2s": {
-    "bck": 15,
+    "bck": 17,
     "lrck": 16,
-    "din": 17
+    "din": 15
   },
   "oled": {
     "sda": 8,

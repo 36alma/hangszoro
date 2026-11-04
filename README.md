@@ -12,9 +12,9 @@ PCM5102A modul bekötése (az alapértelmezett GPIO-k a `config.json`-ból módo
 
 | PCM5102A | ESP32-S3 / tápellátás |
 |---|---|
-| BCK | GPIO 15 (`i2s.bck`) |
+| BCK | GPIO 17 (`i2s.bck`) |
 | LRCK (WS) | GPIO 16 (`i2s.lrck`) |
-| DIN | GPIO 17 (`i2s.din`) |
+| DIN | GPIO 15 (`i2s.din`) |
 | SCK | GND |
 | FMT | GND (I2S formátum) |
 | XSMT | 3,3 V (nincs némítás) |
@@ -73,9 +73,9 @@ Az érvénytelen mezőt a firmware figyelmeztetéssel (`[cfg] config.json: ...`)
 | `endpoint.port` | Szerver port | `8766` | 1..65535 |
 | `endpoint.path` | Stream útvonal | `/api/mixer/stream` | `/`-lel kezdődik, legfeljebb 256 karakter, nincs szóköz |
 | `endpoint.token` | Bearer token | (üres) | legfeljebb 512 karakter, nincs szóköz vagy vezérlőkarakter |
-| `i2s.bck` | BCK GPIO | `15` | 0..48 |
+| `i2s.bck` | BCK GPIO | `17` | 0..48 |
 | `i2s.lrck` | LRCK GPIO | `16` | 0..48 |
-| `i2s.din` | DIN GPIO | `17` | 0..48, a három tű páronként különböző |
+| `i2s.din` | DIN GPIO | `15` | 0..48, a három tű páronként különböző |
 | `oled.sda` | OLED SDA GPIO (csak `dev` build) | `8` | 0..48 |
 | `oled.scl` | OLED SCL GPIO (csak `dev` build) | `18` | 0..48, különbözik az `oled.sda`-tól, és egyik sem I2S tű |
 | `buffer.ms` | Pufferméret (ms) | `500` | 50..5000 |

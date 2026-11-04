@@ -8,7 +8,9 @@ class AudioOut {
   void setSampleRate(uint32_t sampleRate);
   // `frames` db minta csatornánként; 1 csatornát sztereóra duplikál.
   void write(const int16_t* pcm, size_t frames, uint8_t channels);
-  void mute();
+  // Egyszeri törlés: kinullázza a DMA-ban még lejátszásra váró mintákat.
+  // Nem tartós némítás, a következő write() hangja rendesen kimegy.
+  void clearOutput();
   uint32_t sampleRate() const { return sampleRate_; }
 
  private:

@@ -4,20 +4,20 @@
     "hostname": "hangszoro"
   },
   "wifi": {
-    "ssid": "IDE_A_WIFI_NEVE",
-    "password": "IDE_A_JELSZO"
+    "ssid": "IDE_IRDANEVET",
+    "password": "IDEirdjelszod"
   },
   "net": {
-    "ip": "172.16.1.1",
-    "mask": "255.255.255.0",
-    "gateway": "172.16.255.254",
-    "dns": "1.1.1.1"
+    "ip": "10.0.0.1",
+    "mask": "255.255.0.0",
+    "gateway": "10.0.255.254",
+    "dns": "10.0.255.254"
   },
   "endpoint": {
-    "host": "172.16.1.10",
+    "host": "10.0.0.5",
     "port": 8766,
     "path": "/api/mixer/stream",
-    "token": "IDE_A_TOKEN_AZ_ADMIN_FELULETROL"
+    "token": "IDEJONNATOKEN"
   },
   "i2s": {
     "bck": 17,
